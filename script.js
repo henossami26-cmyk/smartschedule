@@ -34,7 +34,7 @@ function loadTasks() {
       .filter((task) =>
         typeof task === 'object' &&
         task !== null &&
-@@ -71,50 +74,66 @@ function renderTasks() {
+function renderTasks() {
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
