@@ -6,6 +6,9 @@ const taskList = document.querySelector('#task-list');
 const totalHoursElement = document.querySelector('#total-hours');
 const categorySummaryElement = document.querySelector('#category-summary');
 const clearTasksButton = document.querySelector('#clear-tasks');
+const dayProgressText = document.querySelector('#day-progress-text');
+const dayProgressFill = document.querySelector('#day-progress-fill');
+const dayProgressBar = document.querySelector('#day-progress-bar');
 
 const STORAGE_KEY = 'smartschedule-tasks';
 
@@ -31,43 +34,7 @@ function loadTasks() {
       .filter((task) =>
         typeof task === 'object' &&
         task !== null &&
-        'name' in task &&
-        typeof task.name === 'string' &&
-        'duration' in task &&
-        Number.isFinite(Number(task.duration))
-      )
-      .map((task) => ({
-        name: task.name,
-        category: typeof task.category === 'string' ? task.category : '',
-        duration: Number(task.duration),
-      }));
-  } catch (error) {
-    console.error('Failed to load tasks from storage', error);
-  }
-}
-
-function renderTasks() {
-  taskList.innerHTML = '';
-  tasks.forEach((task, index) => {
-    const listItem = document.createElement('li');
-    listItem.className = 'task-item';
-
-    const details = document.createElement('div');
-    details.className = 'details';
-
-    const name = document.createElement('span');
-    name.className = 'task-name';
-    name.textContent = task.name;
-
-    const meta = document.createElement('span');
-    meta.className = 'task-meta';
-    meta.textContent = task.category ? `${task.category}` : 'Uncategorized';
-
-    details.append(name, meta);
-
-    const duration = document.createElement('span');
-    duration.className = 'task-duration';
-    duration.textContent = `${task.duration}h`;
+@@ -71,50 +74,66 @@ function renderTasks() {
 
     const removeButton = document.createElement('button');
     removeButton.type = 'button';
@@ -92,6 +59,22 @@ function renderTasks() {
 function renderTotals() {
   const total = tasks.reduce((sum, task) => sum + task.duration, 0);
   totalHoursElement.textContent = total.toFixed(2).replace(/\.00$/, '');
+
+  const percentageOfDay = (total / 24) * 100;
+  const boundedPercentage = Math.min(Math.max(percentageOfDay, 0), 100);
+  const roundedDisplay = Math.round(percentageOfDay * 10) / 10;
+
+  if (dayProgressText) {
+    dayProgressText.textContent = `You’ve planned ${roundedDisplay.toFixed(1)}% of your day`;
+  }
+
+  if (dayProgressFill) {
+    dayProgressFill.style.width = `${boundedPercentage}%`;
+  }
+
+  if (dayProgressBar) {
+    dayProgressBar.setAttribute('aria-valuenow', boundedPercentage.toFixed(1));
+  }
 
   const categoryTotals = tasks.reduce((acc, task) => {
     const key = task.category || 'Uncategorized';
@@ -118,34 +101,3 @@ function resetForm() {
 
 taskForm.addEventListener('submit', (event) => {
   event.preventDefault();
-
-  const name = taskNameInput.value.trim();
-  const category = taskCategoryInput.value.trim();
-  const duration = parseFloat(taskDurationInput.value);
-
-  if (!name || Number.isNaN(duration) || duration <= 0) {
-    return;
-  }
-
-  tasks.push({
-    name,
-    category,
-    duration,
-  });
-
-  renderTasks();
-  renderTotals();
-  saveTasks();
-  resetForm();
-});
-
-clearTasksButton.addEventListener('click', () => {
-  tasks.length = 0;
-  renderTasks();
-  renderTotals();
-  localStorage.removeItem(STORAGE_KEY);
-});
-
-loadTasks();
-renderTasks();
-renderTotals();
