@@ -50,6 +50,20 @@
         <span id="total-hours">0</span>
         <span class="hours-label">hours planned</span>
       </p>
+      <div class="day-progress">
+        <p id="day-progress-text" class="day-progress-text">You’ve planned 0% of your day</p>
+        <div
+          id="day-progress-bar"
+          class="progress-track"
+          role="progressbar"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-label="Planned portion of the day"
+        >
+          <div id="day-progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
       <div id="category-summary" class="category-summary">
         <!-- Category totals will be inserted here -->
       </div>
