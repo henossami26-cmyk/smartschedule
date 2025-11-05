@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartSchedule</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>SmartSchedule</h1>
+    <p class="tagline">Plan your day, stay on track, and know where your hours go.</p>
+  </header>
+
+  <main>
+    <section class="task-input">
+      <h2>Add a task</h2>
+      <form id="task-form">
+        <div class="field-group">
+          <label for="task-name">Task Name</label>
+          <input type="text" id="task-name" name="task-name" placeholder="e.g., Morning workout" required />
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label for="task-category">Category</label>
+            <input type="text" id="task-category" name="task-category" placeholder="e.g., Health" />
+          </div>
+          <div class="field-group">
+            <label for="task-duration">Duration (hours)</label>
+            <input type="number" id="task-duration" name="task-duration" min="0" step="0.25" placeholder="1.5" required />
+          </div>
+        </div>
+        <button type="submit" class="primary-button">Add Task</button>
+      </form>
+    </section>
+
+    <section class="task-list-section">
+      <div class="section-header">
+        <h2>Today's Tasks</h2>
+        <button id="clear-tasks" type="button" class="secondary-button">Clear All</button>
+      </div>
+      <ul id="task-list" class="task-list" aria-live="polite">
+        <!-- Task items will be inserted here -->
+      </ul>
+    </section>
+
+    <section class="totals-section">
+      <h2>Total Scheduled Hours</h2>
+      <p class="total-hours">
+        <span id="total-hours">0</span>
+        <span class="hours-label">hours planned</span>
+      </p>
+      <div id="category-summary" class="category-summary">
+        <!-- Category totals will be inserted here -->
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p>SmartSchedule keeps your day organized and balanced.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
