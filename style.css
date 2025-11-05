@@ -1,0 +1,242 @@
+:root {
+  --background: #f3f4f6;
+  --surface: #ffffff;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--background);
+  color: var(--text);
+  line-height: 1.6;
+}
+
+main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.app-header {
+  background: var(--surface);
+  padding: 3rem 1.5rem 2.5rem;
+  text-align: center;
+  box-shadow: var(--shadow);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 2.5rem;
+  letter-spacing: 0.03em;
+}
+
+.app-header .tagline {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.task-input,
+.task-list-section,
+.totals-section {
+  background: var(--surface);
+  margin-top: 2rem;
+  padding: 2rem;
+  border-radius: 1rem;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+
+.task-input h2,
+.task-list-section h2,
+.totals-section h2 {
+  margin-top: 0;
+  font-size: 1.5rem;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+label {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+input[type="text"],
+input[type="number"] {
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.primary-button,
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 1.5rem;
+  border-radius: 999px;
+  border: none;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.primary-button {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button:active,
+.secondary-button:active {
+  transform: translateY(0);
+}
+
+.primary-button:hover {
+  background: var(--primary-dark);
+}
+
+.secondary-button {
+  background: #e0e7ff;
+  color: var(--primary-dark);
+  border: 1px solid #c7d2fe;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.25);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.task-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.task-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: #f9fafb;
+}
+
+.task-item .details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.task-item .task-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.task-item .task-meta {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.task-item .task-duration {
+  font-weight: 600;
+  color: var(--primary-dark);
+}
+
+.total-hours {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.total-hours .hours-label {
+  font-size: 1rem;
+  color: var(--muted);
+}
+
+.category-summary {
+  margin-top: 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: #eef2ff;
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.app-footer {
+  text-align: center;
+  color: var(--muted);
+  padding: 2rem 1rem 3rem;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  main {
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  .task-input,
+  .task-list-section,
+  .totals-section {
+    padding: 1.5rem;
+  }
+
+  .task-item {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
