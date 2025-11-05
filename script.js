@@ -7,7 +7,44 @@ const totalHoursElement = document.querySelector('#total-hours');
 const categorySummaryElement = document.querySelector('#category-summary');
 const clearTasksButton = document.querySelector('#clear-tasks');
 
-const tasks = [];
+const STORAGE_KEY = 'smartschedule-tasks';
+
+let tasks = [];
+
+function saveTasks() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+}
+
+function loadTasks() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored) {
+      return;
+    }
+
+    const parsed = JSON.parse(stored);
+    if (!Array.isArray(parsed)) {
+      return;
+    }
+
+    tasks = parsed
+      .filter((task) =>
+        typeof task === 'object' &&
+        task !== null &&
+        'name' in task &&
+        typeof task.name === 'string' &&
+        'duration' in task &&
+        Number.isFinite(Number(task.duration))
+      )
+      .map((task) => ({
+        name: task.name,
+        category: typeof task.category === 'string' ? task.category : '',
+        duration: Number(task.duration),
+      }));
+  } catch (error) {
+    console.error('Failed to load tasks from storage', error);
+  }
+}
 
 function renderTasks() {
   taskList.innerHTML = '';
@@ -40,6 +77,7 @@ function renderTasks() {
       tasks.splice(index, 1);
       renderTasks();
       renderTotals();
+      saveTasks();
     });
 
     const actionGroup = document.createElement('div');
@@ -66,6 +104,7 @@ function renderTotals() {
     const categoryItem = document.createElement('div');
     categoryItem.className = 'category-item';
     categoryItem.innerHTML = `<span>${category}</span><span>${hours.toFixed(2).replace(/\\.00$/, '')} h</span>`;
+    categoryItem.innerHTML = `<span>${category}</span><span>${hours.toFixed(2).replace(/\.00$/, '')} h</span>`;
     categorySummaryElement.append(categoryItem);
   });
 }
@@ -96,6 +135,7 @@ taskForm.addEventListener('submit', (event) => {
 
   renderTasks();
   renderTotals();
+  saveTasks();
   resetForm();
 });
 
@@ -103,7 +143,9 @@ clearTasksButton.addEventListener('click', () => {
   tasks.length = 0;
   renderTasks();
   renderTotals();
+  localStorage.removeItem(STORAGE_KEY);
 });
 
+loadTasks();
 renderTasks();
 renderTotals();
