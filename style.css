@@ -296,6 +296,47 @@ input[type="number"]:focus {
   font-weight: 600;
   transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease;
 }
+/* --- Compact spacing --- */
+.task-input,
+.task-list-section,
+.category-section,
+.totals-section {
+  margin-top: 1rem;
+  padding: 1.25rem;
+}
+
+.task-item {
+  padding: 0.75rem 1rem;
+}
+
+.field-row { gap: 0.75rem; }
+
+.progress-track { height: 12px; }
+
+/* --- Grid layout controlling order & compactness --- */
+main {
+  display: grid;
+  gap: 1rem;
+  grid-template-areas:
+    "input"
+    "tasks"
+    "cats"
+    "totals";
+}
+
+#input  { grid-area: input; }
+#tasks  { grid-area: tasks; }
+#cats   { grid-area: cats; }
+#totals { grid-area: totals; }
+
+@media (min-width: 960px) {
+  main {
+    grid-template-columns: 1.2fr 0.8fr;
+    grid-template-areas:
+      "input  totals"
+      "tasks  cats";
+  }
+}
 
 .app-footer {
   text-align: center;
