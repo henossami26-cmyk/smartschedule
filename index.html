@@ -6,9 +6,17 @@
   <title>SmartSchedule</title>
   <link rel="stylesheet" href="style.css" />
 </head>
+
 <body>
   <header class="app-header">
-    <button id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode" aria-pressed="false">🌙</button>
+    <button
+      id="themeToggle"
+      type="button"
+      aria-label="Toggle dark mode"
+      title="Toggle dark mode"
+      aria-pressed="false"
+    >🌙</button>
+
     <h1>SmartSchedule</h1>
     <p class="tagline">Plan your day, stay on track, and know where your hours go.</p>
   </header>
@@ -19,18 +27,46 @@
       <form id="task-form">
         <div class="field-group">
           <label for="task-name">Task Name</label>
-          <input type="text" id="task-name" name="task-name" placeholder="e.g., Morning workout" required />
+          <input
+            type="text"
+            id="task-name"
+            name="task-name"
+            placeholder="e.g., Morning workout"
+            required
+          />
         </div>
+
         <div class="field-row">
           <div class="field-group">
             <label for="task-category">Category</label>
-            <input type="text" id="task-category" name="task-category" placeholder="e.g., Health" />
+            <input
+              type="text"
+              id="task-category"
+              name="task-category"
+              placeholder="e.g., Health"
+            />
           </div>
+
           <div class="field-group">
             <label for="task-duration">Duration (hours)</label>
-            <input type="number" id="task-duration" name="task-duration" min="0" step="0.25" placeholder="1.5" required />
+            <input
+              type="number"
+              id="task-duration"
+              name="task-duration"
+              min="0"
+              step="0.25"
+              placeholder="1.5"
+              required
+            />
           </div>
         </div>
+
         <button type="submit" class="primary-button">Add Task</button>
       </form>
     </section>
+  </main>
+
+  <!-- ✅ Script correctly placed here -->
+  <script src="script.js" defer></script>
+</body>
+</html>
