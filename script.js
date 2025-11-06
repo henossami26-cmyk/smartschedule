@@ -10,9 +10,12 @@ const clearTasksButton = document.querySelector('#clear-tasks');
 const dayProgressText = document.querySelector('#day-progress-text');
 const dayProgressFill = document.querySelector('#day-progress-fill');
 const dayProgressBar = document.querySelector('#day-progress-bar');
+const themeToggle = document.querySelector('#themeToggle');
+const rootElement = document.documentElement;
 
 // ------ storage ------
 const STORAGE_KEY = 'smartschedule-tasks';
+const THEME_STORAGE_KEY = 'smartschedule:theme';
 let tasks = [];
 
 function saveTasks() {
@@ -38,96 +41,7 @@ function loadTasks() {
         category: typeof t.category === 'string' ? t.category.trim() : '',
         duration: Number(t.duration)
       }));
-  } catch (e) {
-    console.error('Failed to load tasks', e);
-  }
-}
-
-// ------ rendering ------
-function renderTasks() {
-  taskList.innerHTML = '';
-
-  tasks.forEach((task, index) => {
-    const li = document.createElement('li');
-    li.className = 'task-item';
-
-    const details = document.createElement('div');
-    details.className = 'details';
-
-    const name = document.createElement('span');
-    name.className = 'task-name';
-    name.textContent = task.name;
-
-    const meta = document.createElement('span');
-    meta.className = 'task-meta';
-    meta.textContent = task.category ? task.category : 'Uncategorized';
-
-    details.append(name, meta);
-
-    const duration = document.createElement('span');
-    duration.className = 'task-duration';
-    duration.textContent = `${task.duration}h`;
-
-    const removeBtn = document.createElement('button');
-    removeBtn.type = 'button';
-    removeBtn.className = 'secondary-button';
-    removeBtn.textContent = 'Remove';
-    removeBtn.addEventListener('click', () => {
-      tasks.splice(index, 1);
-      saveTasks();
-      renderTasks();
-      renderTotals();
-    });
-
-    const actions = document.createElement('div');
-    actions.className = 'actions';
-    actions.append(duration, removeBtn);
-
-    li.append(details, actions);
-    taskList.append(li);
-  });
-}
-
-function renderTotals() {
-  const total = tasks.reduce((sum, t) => sum + t.duration, 0);
-  totalHoursElement.textContent = total.toFixed(2).replace(/\.00$/, '');
-
-  // Day progress (24h)
-  const pct = Math.min(Math.max((total / 24) * 100, 0), 100);
-  const pctDisplay = Math.round(pct * 10) / 10;
-
-  if (dayProgressText) {
-    dayProgressText.textContent = `You've planned ${pctDisplay.toFixed(1)}% of your day`;
-  }
-  if (dayProgressFill) {
-    dayProgressFill.style.width = `${pct}%`;
-  }
-  if (dayProgressBar) {
-    dayProgressBar.setAttribute('aria-valuenow', pctDisplay.toFixed(1));
-  }
-
-  // Category summary
-  const byCat = tasks.reduce((acc, t) => {
-    const key = t.category || 'Uncategorized';
-    acc[key] = (acc[key] || 0) + t.duration;
-    return acc;
-  }, {});
-
-  categorySummaryElement.innerHTML = '';
-  Object.entries(byCat).forEach(([cat, hrs]) => {
-    const row = document.createElement('div');
-    row.className = 'category-item';
-    row.innerHTML = `<span>${cat}</span><span>${hrs.toFixed(2).replace(/\.00$/, '')} h</span>`;
-    categorySummaryElement.append(row);
-  });
-}
-
 function resetForm() {
-  taskNameInput.value = '';
-  taskCategoryInput.value = '';
-  taskDurationInput.value = '';
-  taskNameInput.focus();
-}
 
 // ------ events ------
 taskForm.addEventListener('submit', (e) => {
@@ -152,6 +66,77 @@ clearTasksButton.addEventListener('click', () => {
   renderTasks();
   renderTotals();
 });
+
+// ------ theming ------
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+
+  if (isDark) {
+    rootElement.setAttribute('data-theme', 'dark');
+  } else {
+    rootElement.removeAttribute('data-theme');
+  }
+
+  if (themeToggle) {
+    themeToggle.textContent = isDark ? '☀️' : '🌙';
+    themeToggle.setAttribute('aria-pressed', String(isDark));
+    themeToggle.setAttribute('title', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+  }
+}
+
+function resolveInitialTheme() {
+  try {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark' || stored === 'light') {
+      return stored;
+    }
+  } catch (error) {
+    console.warn('Unable to read theme preference from storage.', error);
+  }
+
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+const initialTheme = resolveInitialTheme();
+applyTheme(initialTheme);
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const isDark = rootElement.getAttribute('data-theme') === 'dark';
+    const nextTheme = isDark ? 'light' : 'dark';
+
+    applyTheme(nextTheme);
+
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    } catch (error) {
+      console.warn('Unable to persist theme preference.', error);
+    }
+  });
+}
+
+const prefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+if (prefersDark) {
+  const handlePreferenceChange = event => {
+    try {
+      const stored = localStorage.getItem(THEME_STORAGE_KEY);
+      if (stored === 'dark' || stored === 'light') {
+        return;
+      }
+    } catch (error) {
+      console.warn('Unable to access theme preference on change.', error);
+      return;
+    }
+
+    applyTheme(event.matches ? 'dark' : 'light');
+  };
+
+  if (typeof prefersDark.addEventListener === 'function') {
+    prefersDark.addEventListener('change', handlePreferenceChange);
+  } else if (typeof prefersDark.addListener === 'function') {
+    prefersDark.addListener(handlePreferenceChange);
+  }
+}
 
 // ------ init ------
 loadTasks();
