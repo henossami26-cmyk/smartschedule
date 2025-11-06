@@ -22,6 +22,7 @@
   </header>
 
   <main>
+    <!-- Add Task Section -->
     <section class="task-input">
       <h2>Add a task</h2>
       <form id="task-form">
@@ -64,9 +65,41 @@
         <button type="submit" class="primary-button">Add Task</button>
       </form>
     </section>
+
+    <!-- Totals / Progress Bar Section -->
+    <section class="totals-section">
+      <div class="section-header">
+        <h2>Today</h2>
+        <button id="clear-tasks" class="secondary-button" type="button">Clear tasks</button>
+      </div>
+
+      <p class="total-hours">
+        <span id="total-hours">0</span>
+        <span class="hours-label">hours today</span>
+      </p>
+
+      <div class="day-progress">
+        <p id="day-progress-text" class="day-progress-text">0% of 8h</p>
+        <div id="day-progress-bar" class="progress-track">
+          <div id="day-progress-fill" class="progress-fill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Task List Section -->
+    <section class="task-list-section">
+      <h2>Tasks</h2>
+      <ul id="task-list" class="task-list"></ul>
+    </section>
+
+    <!-- Category Summary Section -->
+    <section class="totals-section">
+      <h2>By category</h2>
+      <div id="category-summary" class="category-summary"></div>
+    </section>
   </main>
 
-  <!-- ✅ Script correctly placed here -->
+  <!-- ✅ Script must be last -->
   <script src="script.js" defer></script>
 </body>
 </html>
