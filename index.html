@@ -8,6 +8,7 @@
 </head>
 <body>
   <header class="app-header">
+    <button id="themeToggle" type="button" aria-label="Toggle dark mode" title="Toggle dark mode" aria-pressed="false">🌙</button>
     <h1>SmartSchedule</h1>
     <p class="tagline">Plan your day, stay on track, and know where your hours go.</p>
   </header>
@@ -33,47 +34,3 @@
         <button type="submit" class="primary-button">Add Task</button>
       </form>
     </section>
-
-    <section class="task-list-section">
-      <div class="section-header">
-        <h2>Today's Tasks</h2>
-        <button id="clear-tasks" type="button" class="secondary-button">Clear All</button>
-      </div>
-      <ul id="task-list" class="task-list" aria-live="polite">
-        <!-- Task items will be inserted here -->
-      </ul>
-    </section>
-
-    <section class="totals-section">
-      <h2>Total Scheduled Hours</h2>
-      <p class="total-hours">
-        <span id="total-hours">0</span>
-        <span class="hours-label">hours planned</span>
-      </p>
-      <div class="day-progress">
-        <p id="day-progress-text" class="day-progress-text">You’ve planned 0% of your day</p>
-        <div
-          id="day-progress-bar"
-          class="progress-track"
-          role="progressbar"
-          aria-valuemin="0"
-          aria-valuemax="100"
-          aria-valuenow="0"
-          aria-label="Planned portion of the day"
-        >
-          <div id="day-progress-fill" class="progress-fill"></div>
-        </div>
-      </div>
-      <div id="category-summary" class="category-summary">
-        <!-- Category totals will be inserted here -->
-      </div>
-    </section>
-  </main>
-
-  <footer class="app-footer">
-    <p>SmartSchedule keeps your day organized and balanced.</p>
-  </footer>
-
-  <script src="script.js"></script>
-</body>
-</html>
