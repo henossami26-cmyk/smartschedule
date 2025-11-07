@@ -1,5 +1,5 @@
-// =========================
-// SmartSchedule - Daily View + Calendar + Theme
+/ =========================
+// SmartSchedule - Daily View + Goal + Calendar + Theme
 // =========================
 
 // ------ DOM refs ------
@@ -30,19 +30,20 @@ const calendarDatePicker = document.querySelector('#calendar-date-picker');
 const themeToggle = document.querySelector('#themeToggle');
 const rootElement = document.documentElement;
 
-// Totals card labels (for dynamic "Today" vs selected date)
 const totalsTitle = document.querySelector('#totals .section-header h2');
 const hoursLabelElement = document.querySelector('#totals .hours-label');
+const dailyGoalInput = document.querySelector('#daily-goal');
 
 // ------ storage keys ------
 const STORAGE_KEY = 'smartschedule:tasks';
 const LEGACY_STORAGE_KEY = 'smartschedule-tasks';
 const THEME_STORAGE_KEY = 'smartschedule:theme';
+const DAILY_GOAL_KEY = 'smartschedule:daily-goal';
 
 // ------ state ------
 let tasks = [];
 let selectedDate = getTodayString();
-const DAILY_TARGET_HOURS = 8;
+let dailyTargetHours = 8;
 
 // =========================
 // Date helpers
@@ -114,7 +115,6 @@ function loadTasksFromStorage() {
 
     const cleaned = parsed.map(sanitizeTask).filter(Boolean);
 
-    // migrate to new key
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
     if (LEGACY_STORAGE_KEY !== STORAGE_KEY) {
       localStorage.removeItem(LEGACY_STORAGE_KEY);
@@ -133,6 +133,45 @@ function saveTasksToStorage() {
   } catch (e) {
     console.warn('Unable to save tasks:', e);
   }
+}
+
+// =========================
+// Daily goal storage
+// =========================
+
+function loadDailyGoal() {
+  try {
+    const raw = localStorage.getItem(DAILY_GOAL_KEY);
+    const num = Number(raw);
+    if (Number.isFinite(num) && num > 0) {
+      dailyTargetHours = num;
+    } else {
+      dailyTargetHours = 8;
+    }
+  } catch {
+    dailyTargetHours = 8;
+  }
+
+  if (dailyGoalInput) {
+    dailyGoalInput.value = dailyTargetHours;
+  }
+}
+
+function saveDailyGoal() {
+  if (!dailyGoalInput) return;
+  const num = Number(dailyGoalInput.value);
+  if (!Number.isFinite(num) || num <= 0) {
+    dailyGoalInput.value = dailyTargetHours;
+    return;
+  }
+  dailyTargetHours = num;
+  try {
+    localStorage.setItem(DAILY_GOAL_KEY, String(dailyTargetHours));
+  } catch {
+    /* ignore */
+  }
+  // Recompute progress for current day
+  updateDailySummary(getTasksForSelectedDate());
 }
 
 // =========================
@@ -273,13 +312,11 @@ function updateDailySummary(dailyTasks) {
     totalHoursElement.textContent = total.toFixed(2);
   }
 
-  const pct =
-    DAILY_TARGET_HOURS > 0
-      ? Math.min(100, (total / DAILY_TARGET_HOURS) * 100)
-      : 0;
+  const target = dailyTargetHours > 0 ? dailyTargetHours : 8;
+  const pct = target > 0 ? Math.min(100, (total / target) * 100) : 0;
 
   if (dayProgressText) {
-    dayProgressText.textContent = `${Math.round(pct)}% of ${DAILY_TARGET_HOURS}h`;
+    dayProgressText.textContent = `${Math.round(pct)}% of ${target}h`;
   }
 
   if (dayProgressFill) {
@@ -288,8 +325,8 @@ function updateDailySummary(dailyTasks) {
 
   if (dayProgressBar) {
     dayProgressBar.setAttribute('aria-valuemin', '0');
-    dayProgressBar.setAttribute('aria-valuemax', String(DAILY_TARGET_HOURS));
-    dayProgressBar.setAttribute('aria-valuenow', String(Math.min(total, DAILY_TARGET_HOURS)));
+    dayProgressBar.setAttribute('aria-valuemax', String(target));
+    dayProgressBar.setAttribute('aria-valuenow', String(Math.min(total, target)));
   }
 }
 
@@ -351,19 +388,16 @@ function resolveInitialTheme() {
 // =========================
 
 (function init() {
-  // Load tasks
+  // Load tasks + goal
   tasks = loadTasksFromStorage();
+  loadDailyGoal();
 
   // Ensure selectedDate and inputs are in sync
-  if (!selectedDate) selectedDate = getTodayString();
-  if (taskDateInput && !taskDateInput.value) {
-    taskDateInput.value = selectedDate;
-  }
-  if (calendarDatePicker && !calendarDatePicker.value) {
-    calendarDatePicker.value = selectedDate;
-  }
+  selectedDate = getTodayString();
+  if (taskDateInput) taskDateInput.value = selectedDate;
+  if (calendarDatePicker) calendarDatePicker.value = selectedDate;
 
-  setSelectedDate(selectedDate); // also calls updateTotalsLabels
+  setSelectedDate(selectedDate); // updates labels + renders
 
   // ---- Form submit ----
   if (taskForm) {
@@ -390,7 +424,7 @@ function resolveInitialTheme() {
       tasks.push(newTask);
       saveTasksToStorage();
 
-      // Jump view to that day so the card + list match
+      // Jump view to that day so nav + totals match
       setSelectedDate(date);
       resetForm();
     });
@@ -460,6 +494,12 @@ function resolveInitialTheme() {
     });
   }
 
+  // ---- Daily goal events ----
+  if (dailyGoalInput) {
+    dailyGoalInput.addEventListener('change', saveDailyGoal);
+    dailyGoalInput.addEventListener('blur', saveDailyGoal);
+  }
+
   // ---- Theme init ----
   const initialTheme = resolveInitialTheme();
   applyTheme(initialTheme);
@@ -467,10 +507,10 @@ function resolveInitialTheme() {
   if (themeToggle) {
     themeToggle.addEventListener('click', () => {
       const isDark = rootElement.getAttribute('data-theme') === 'dark';
-      const nextTheme = isDark ? 'light' : 'dark';
-      applyTheme(nextTheme);
+      const next = isDark ? 'light' : 'dark';
+      applyTheme(next);
       try {
-        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        localStorage.setItem(THEME_STORAGE_KEY, next);
       } catch {
         /* ignore */
       }
