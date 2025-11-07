@@ -1,539 +1,562 @@
-// =========================
 // SmartSchedule - Daily View + Goal + Calendar + Theme
-// =========================
 
-// ------ DOM refs ------
-const taskForm = document.querySelector('#task-form');
-const taskNameInput = document.querySelector('#task-name');
-const taskCategoryInput = document.querySelector('#task-category');
-const taskDurationInput = document.querySelector('#task-duration');
-const taskDateInput = document.querySelector('#task-date');
+(function () {
+  'use strict';
 
-const taskList = document.querySelector('#task-list');
-const totalHoursElement = document.querySelector('#total-hours');
-const categorySummaryElement = document.querySelector('#category-summary');
-const clearTasksButton = document.querySelector('#clear-tasks');
+  // ------ DOM refs ------
+  const taskForm = document.querySelector('#task-form');
+  const taskNameInput = document.querySelector('#task-name');
+  const taskCategoryInput = document.querySelector('#task-category');
+  const taskDurationInput = document.querySelector('#task-duration');
+  const taskDateInput = document.querySelector('#task-date');
 
-const dayProgressText = document.querySelector('#day-progress-text');
-const dayProgressFill = document.querySelector('#day-progress-fill');
-const dayProgressBar = document.querySelector('#day-progress-bar');
+  const taskList = document.querySelector('#task-list');
+  const totalHoursElement = document.querySelector('#total-hours');
+  const categorySummaryElement = document.querySelector('#category-summary');
+  const clearTasksButton = document.querySelector('#clear-tasks');
 
-const todayButton = document.querySelector('#today-button');
-const prevDayButton = document.querySelector('#prev-day');
-const nextDayButton = document.querySelector('#next-day');
-const selectedDateLabel = document.querySelector('#selected-date-label');
+  const dayProgressText = document.querySelector('#day-progress-text');
+  const dayProgressFill = document.querySelector('#day-progress-fill');
+  const dayProgressBar = document.querySelector('#day-progress-bar');
 
-const calendarToggleButton = document.querySelector('#calendar-toggle');
-const calendarPopover = document.querySelector('#calendar-popover');
-const calendarDatePicker = document.querySelector('#calendar-date-picker');
+  const todayButton = document.querySelector('#today-button');
+  const prevDayButton = document.querySelector('#prev-day');
+  const nextDayButton = document.querySelector('#next-day');
+  const selectedDateLabel = document.querySelector('#selected-date-label');
 
-const themeToggle = document.querySelector('#themeToggle');
-const rootElement = document.documentElement;
+  const calendarToggleButton = document.querySelector('#calendar-toggle');
+  const calendarPopover = document.querySelector('#calendar-popover');
+  const calendarDatePicker = document.querySelector('#calendar-date-picker');
 
-const totalsTitle = document.querySelector('#totals .section-header h2');
-const hoursLabelElement = document.querySelector('#totals .hours-label');
-const dailyGoalInput = document.querySelector('#daily-goal');
+  const themeToggle = document.querySelector('#themeToggle');
+  const rootElement = document.documentElement;
 
-// ------ storage keys ------
-const STORAGE_KEY = 'smartschedule:tasks';
-const LEGACY_STORAGE_KEY = 'smartschedule-tasks';
-const THEME_STORAGE_KEY = 'smartschedule:theme';
-const DAILY_GOAL_KEY = 'smartschedule:daily-goal';
+  const totalsTitle = document.querySelector('#totals .section-header h2');
+  const hoursLabelElement = document.querySelector('#totals .hours-label');
+  const dailyGoalInput = document.querySelector('#daily-goal');
 
-// ------ state ------
-let tasks = [];
-let selectedDate = getTodayString();
-let dailyTargetHours = 8;
+  // ------ storage keys ------
+  const STORAGE_KEY = 'smartschedule:tasks';
+  const LEGACY_STORAGE_KEY = 'smartschedule-tasks';
+  const THEME_STORAGE_KEY = 'smartschedule:theme';
+  const DAILY_GOAL_KEY = 'smartschedule:daily-goal';
 
-// =========================
-// Date helpers
-// =========================
+  // ------ state ------
+  let tasks = [];
+  let selectedDate = getTodayString();
+  let dailyTargetHours = 8;
 
-function getTodayString() {
-  const now = new Date();
-  return now.toISOString().slice(0, 10); // yyyy-mm-dd
-}
+  // =========================
+  // Date helpers
+  // =========================
 
-function normalizeDateString(value) {
-  if (!value) return null;
-  const isoCandidate = String(value).slice(0, 10);
-  const date = new Date(`${isoCandidate}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 10);
-}
-
-function formatDateLabel(dateString) {
-  const normalized = normalizeDateString(dateString) || getTodayString();
-  const date = new Date(`${normalized}T00:00:00`);
-  return date.toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
-function shiftSelectedDate(days) {
-  const base = new Date(`${selectedDate}T00:00:00`);
-  base.setDate(base.getDate() + days);
-  const iso = base.toISOString().slice(0, 10);
-  setSelectedDate(iso);
-}
-
-// =========================
-// Task storage + sanitize
-// =========================
-
-function generateTaskId() {
-  return `task-${Date.now().toString(36)}-${Math.random().toString(16).slice(2, 8)}`;
-}
-
-function sanitizeTask(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-
-  const id = typeof raw.id === 'string' ? raw.id : generateTaskId();
-  const name = typeof raw.name === 'string' ? raw.name.trim() : '';
-  if (!name) return null;
-
-  const category = typeof raw.category === 'string' ? raw.category.trim() : '';
-
-  const d = Number(raw.duration);
-  const duration = Number.isFinite(d) && d > 0 ? d : 0;
-  if (duration <= 0) return null;
-
-  const date = normalizeDateString(raw.date) || getTodayString();
-
-  return { id, name, category, duration, date };
-}
-
-function loadTasksFromStorage() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY) ?? localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (!raw) return [];
-
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-
-    const cleaned = parsed.map(sanitizeTask).filter(Boolean);
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
-    if (LEGACY_STORAGE_KEY !== STORAGE_KEY) {
-      localStorage.removeItem(LEGACY_STORAGE_KEY);
-    }
-
-    return cleaned;
-  } catch (e) {
-    console.warn('Unable to load tasks:', e);
-    return [];
-  }
-}
-
-function saveTasksToStorage() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  } catch (e) {
-    console.warn('Unable to save tasks:', e);
-  }
-}
-
-// =========================
-// Daily goal storage
-// =========================
-
-function loadDailyGoal() {
-  try {
-    const raw = localStorage.getItem(DAILY_GOAL_KEY);
-    const num = Number(raw);
-    if (Number.isFinite(num) && num > 0) {
-      dailyTargetHours = num;
-    } else {
-      dailyTargetHours = 8;
-    }
-  } catch {
-    dailyTargetHours = 8;
+  function getTodayString() {
+    const now = new Date();
+    return now.toISOString().slice(0, 10); // yyyy-mm-dd
   }
 
-  if (dailyGoalInput) {
-    dailyGoalInput.value = dailyTargetHours;
+  function normalizeDateString(value) {
+    if (!value) return null;
+    const isoCandidate = String(value).slice(0, 10);
+    const date = new Date(`${isoCandidate}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toISOString().slice(0, 10);
   }
-}
 
-function saveDailyGoal() {
-  if (!dailyGoalInput) return;
-  const num = Number(dailyGoalInput.value);
-  if (!Number.isFinite(num) || num <= 0) {
-    dailyGoalInput.value = dailyTargetHours;
-    return;
-  }
-  dailyTargetHours = num;
-  try {
-    localStorage.setItem(DAILY_GOAL_KEY, String(dailyTargetHours));
-  } catch {
-    /* ignore */
-  }
-  // Recompute progress for current day
-  updateDailySummary(getTasksForSelectedDate());
-}
-
-// =========================
-// Core helpers
-// =========================
-
-function getTasksForSelectedDate() {
-  return tasks.filter((t) => t.date === selectedDate);
-}
-
-function updateTotalsLabels() {
-  if (!totalsTitle || !hoursLabelElement) return;
-
-  const today = getTodayString();
-
-  if (selectedDate === today) {
-    totalsTitle.textContent = 'Today';
-    hoursLabelElement.textContent = 'hours today';
-  } else {
-    totalsTitle.textContent = formatDateLabel(selectedDate);
-
-    const d = new Date(selectedDate + 'T00:00:00');
-    const short = d.toLocaleDateString(undefined, {
-      month: 'short',
+  function formatDateLabel(dateString) {
+    const normalized = normalizeDateString(dateString) || getTodayString();
+    const date = new Date(`${normalized}T00:00:00`);
+    return date.toLocaleDateString(undefined, {
+      weekday: 'long',
+      month: 'long',
       day: 'numeric',
     });
-
-    hoursLabelElement.textContent = `hours on ${short}`;
-  }
-}
-
-function setSelectedDate(dateString) {
-  const normalized = normalizeDateString(dateString) || getTodayString();
-  selectedDate = normalized;
-
-  if (selectedDateLabel) {
-    selectedDateLabel.textContent = formatDateLabel(selectedDate);
-  }
-  if (taskDateInput) {
-    taskDateInput.value = selectedDate;
-  }
-  if (calendarDatePicker) {
-    calendarDatePicker.value = selectedDate;
   }
 
-  updateTotalsLabels();
-  renderTasksForSelectedDate();
-}
-
-function resetForm() {
-  if (!taskForm) return;
-  taskNameInput.value = '';
-  taskCategoryInput.value = '';
-  taskDurationInput.value = '';
-  if (taskDateInput) {
-    taskDateInput.value = selectedDate || getTodayString();
+  function shiftSelectedDate(days) {
+    const base = new Date(`${selectedDate}T00:00:00`);
+    base.setDate(base.getDate() + days);
+    const iso = base.toISOString().slice(0, 10);
+    setSelectedDate(iso);
   }
-  taskNameInput.focus();
-}
 
-function removeTaskById(taskId) {
-  tasks = tasks.filter((task) => task.id !== taskId);
-  saveTasksToStorage();
-  renderTasksForSelectedDate();
-}
+  // =========================
+  // Task storage + sanitize
+  // =========================
 
-// =========================
-// Rendering
-// =========================
+  function generateTaskId() {
+    return `task-${Date.now().toString(36)}-${Math.random()
+      .toString(16)
+      .slice(2, 8)}`;
+  }
 
-function formatDurationLabel(duration) {
-  const n = Math.round((Number(duration) || 0) * 100) / 100;
-  return Number.isInteger(n) ? `${n}h` : `${n.toFixed(2)}h`;
-}
+  function sanitizeTask(raw) {
+    if (!raw || typeof raw !== 'object') return null;
 
-function renderTasksForSelectedDate() {
-  if (!taskList) return [];
+    const id = typeof raw.id === 'string' ? raw.id : generateTaskId();
+    const name = typeof raw.name === 'string' ? raw.name.trim() : '';
+    if (!name) return null;
 
-  const dailyTasks = getTasksForSelectedDate();
-  taskList.innerHTML = '';
+    const category =
+      typeof raw.category === 'string' ? raw.category.trim() : '';
 
-  dailyTasks.forEach((task) => {
-    const li = document.createElement('li');
-    li.className = 'task-item';
-    li.dataset.taskId = task.id;
+    const d = Number(raw.duration);
+    const duration = Number.isFinite(d) && d > 0 ? d : 0;
+    if (duration <= 0) return null;
 
-    li.innerHTML = `
-      <div class="task-main">
-        <div class="task-title">${task.name}</div>
-        <div class="task-meta">
-          ${task.category || 'Uncategorized'} · ${formatDurationLabel(task.duration)}
+    const date = normalizeDateString(raw.date) || getTodayString();
+
+    return { id, name, category, duration, date };
+  }
+
+  function loadTasksFromStorage() {
+    try {
+      const raw =
+        localStorage.getItem(STORAGE_KEY) ||
+        localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!raw) return [];
+
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+
+      const cleaned = parsed.map(sanitizeTask).filter(Boolean);
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
+      if (LEGACY_STORAGE_KEY !== STORAGE_KEY) {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+
+      return cleaned;
+    } catch (e) {
+      console.warn('Unable to load tasks:', e);
+      return [];
+    }
+  }
+
+  function saveTasksToStorage() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    } catch (e) {
+      console.warn('Unable to save tasks:', e);
+    }
+  }
+
+  // =========================
+  // Daily goal storage
+  // =========================
+
+  function loadDailyGoal() {
+    try {
+      const raw = localStorage.getItem(DAILY_GOAL_KEY);
+      const num = Number(raw);
+      if (Number.isFinite(num) && num > 0) {
+        dailyTargetHours = num;
+      } else {
+        dailyTargetHours = 8;
+      }
+    } catch {
+      dailyTargetHours = 8;
+    }
+
+    if (dailyGoalInput) {
+      dailyGoalInput.value = dailyTargetHours;
+    }
+  }
+
+  function saveDailyGoal() {
+    if (!dailyGoalInput) return;
+    const num = Number(dailyGoalInput.value);
+    if (!Number.isFinite(num) || num <= 0) {
+      dailyGoalInput.value = dailyTargetHours;
+      return;
+    }
+    dailyTargetHours = num;
+    try {
+      localStorage.setItem(DAILY_GOAL_KEY, String(dailyTargetHours));
+    } catch {
+      /* ignore */
+    }
+    updateDailySummary(getTasksForSelectedDate());
+  }
+
+  // =========================
+  // Core helpers
+  // =========================
+
+  function getTasksForSelectedDate() {
+    return tasks.filter((t) => t.date === selectedDate);
+  }
+
+  function updateTotalsLabels() {
+    if (!totalsTitle || !hoursLabelElement) return;
+
+    const today = getTodayString();
+
+    if (selectedDate === today) {
+      totalsTitle.textContent = 'Today';
+      hoursLabelElement.textContent = 'hours today';
+    } else {
+      totalsTitle.textContent = formatDateLabel(selectedDate);
+
+      const d = new Date(`${selectedDate}T00:00:00`);
+      const short = d.toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      });
+
+      hoursLabelElement.textContent = `hours on ${short}`;
+    }
+  }
+
+  function setSelectedDate(dateString) {
+    const normalized = normalizeDateString(dateString) || getTodayString();
+    selectedDate = normalized;
+
+    if (selectedDateLabel) {
+      selectedDateLabel.textContent = formatDateLabel(selectedDate);
+    }
+    if (taskDateInput) {
+      taskDateInput.value = selectedDate;
+    }
+    if (calendarDatePicker) {
+      calendarDatePicker.value = selectedDate;
+    }
+
+    updateTotalsLabels();
+    renderTasksForSelectedDate();
+  }
+
+  function resetForm() {
+    if (!taskForm) return;
+    taskNameInput.value = '';
+    taskCategoryInput.value = '';
+    taskDurationInput.value = '';
+    if (taskDateInput) {
+      taskDateInput.value = selectedDate || getTodayString();
+    }
+    taskNameInput.focus();
+  }
+
+  function removeTaskById(taskId) {
+    tasks = tasks.filter((task) => task.id !== taskId);
+    saveTasksToStorage();
+    renderTasksForSelectedDate();
+  }
+
+  // =========================
+  // Rendering
+  // =========================
+
+  function formatDurationLabel(duration) {
+    const n = Math.round((Number(duration) || 0) * 100) / 100;
+    return Number.isInteger(n) ? `${n}h` : `${n.toFixed(2)}h`;
+  }
+
+  function renderTasksForSelectedDate() {
+    if (!taskList) return [];
+
+    const dailyTasks = getTasksForSelectedDate();
+    taskList.innerHTML = '';
+
+    dailyTasks.forEach((task) => {
+      const li = document.createElement('li');
+      li.className = 'task-item';
+      li.dataset.taskId = task.id;
+
+      li.innerHTML = `
+        <div class="task-main">
+          <div class="task-title">${task.name}</div>
+          <div class="task-meta">
+            ${task.category || 'Uncategorized'} · ${formatDurationLabel(task.duration)}
+          </div>
         </div>
-      </div>
-      <button class="icon-button delete-task" aria-label="Delete task">&times;</button>
-    `;
+        <button class="icon-button delete-task" aria-label="Delete task">&times;</button>
+      `;
 
-    const deleteBtn = li.querySelector('.delete-task');
-    deleteBtn.addEventListener('click', () => {
-      removeTaskById(task.id);
+      const deleteBtn = li.querySelector('.delete-task');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', () => {
+          removeTaskById(task.id);
+        });
+      }
+
+      taskList.appendChild(li);
     });
 
-    taskList.appendChild(li);
-  });
+    renderCategorySummary(dailyTasks);
+    updateDailySummary(dailyTasks);
 
-  renderCategorySummary(dailyTasks);
-  updateDailySummary(dailyTasks);
-
-  return dailyTasks;
-}
-
-function renderCategorySummary(dailyTasks) {
-  if (!categorySummaryElement) return;
-
-  if (!dailyTasks.length) {
-    categorySummaryElement.innerHTML = '<p>No tasks for this day yet.</p>';
-    return;
+    return dailyTasks;
   }
 
-  const byCategory = new Map();
-  for (const task of dailyTasks) {
-    const key = task.category || 'Uncategorized';
-    byCategory.set(key, (byCategory.get(key) || 0) + (Number(task.duration) || 0));
+  function renderCategorySummary(dailyTasks) {
+    if (!categorySummaryElement) return;
+
+    if (!dailyTasks.length) {
+      categorySummaryElement.innerHTML = '<p>No tasks for this day yet.</p>';
+      return;
+    }
+
+    const byCategory = new Map();
+    for (const task of dailyTasks) {
+      const key = task.category || 'Uncategorized';
+      byCategory.set(
+        key,
+        (byCategory.get(key) || 0) + (Number(task.duration) || 0)
+      );
+    }
+
+    categorySummaryElement.innerHTML = '';
+    for (const [category, hours] of byCategory.entries()) {
+      const pill = document.createElement('div');
+      pill.className = 'category-pill';
+      pill.textContent = `${category}: ${hours.toFixed(2)}h`;
+      categorySummaryElement.appendChild(pill);
+    }
   }
 
-  categorySummaryElement.innerHTML = '';
-  for (const [category, hours] of byCategory.entries()) {
-    const pill = document.createElement('div');
-    pill.className = 'category-pill';
-    pill.textContent = `${category}: ${hours.toFixed(2)}h`;
-    categorySummaryElement.appendChild(pill);
-  }
-}
-
-function updateDailySummary(dailyTasks) {
-  const total = dailyTasks.reduce((sum, t) => sum + (Number(t.duration) || 0), 0);
-
-  if (totalHoursElement) {
-    totalHoursElement.textContent = total.toFixed(2);
-  }
-
-  const target = dailyTargetHours > 0 ? dailyTargetHours : 8;
-  const pct = target > 0 ? Math.min(100, (total / target) * 100) : 0;
-
-  if (dayProgressText) {
-    dayProgressText.textContent = `${Math.round(pct)}% of ${target}h`;
-  }
-
-  if (dayProgressFill) {
-    dayProgressFill.style.width = `${pct}%`;
-  }
-
-  if (dayProgressBar) {
-    dayProgressBar.setAttribute('aria-valuemin', '0');
-    dayProgressBar.setAttribute('aria-valuemax', String(target));
-    dayProgressBar.setAttribute('aria-valuenow', String(Math.min(total, target)));
-  }
-}
-
-// =========================
-// Calendar popover
-// =========================
-
-function toggleCalendarPopover() {
-  if (!calendarPopover || !calendarToggleButton) return;
-  const willShow = calendarPopover.hasAttribute('hidden');
-
-  if (willShow) {
-    calendarPopover.removeAttribute('hidden');
-    calendarToggleButton.setAttribute('aria-expanded', 'true');
-    if (calendarDatePicker) calendarDatePicker.focus();
-  } else {
-    calendarPopover.setAttribute('hidden', '');
-    calendarToggleButton.setAttribute('aria-expanded', 'false');
-  }
-}
-
-// =========================
-// Theming
-// =========================
-
-function applyTheme(theme) {
-  const isDark = theme === 'dark';
-  if (isDark) {
-    rootElement.setAttribute('data-theme', 'dark');
-  } else {
-    rootElement.removeAttribute('data-theme');
-  }
-
-  if (themeToggle) {
-    themeToggle.textContent = isDark ? '☀️' : '🌙';
-    themeToggle.setAttribute('aria-pressed', String(isDark));
-    themeToggle.setAttribute(
-      'title',
-      isDark ? 'Switch to light mode' : 'Switch to dark mode'
+  function updateDailySummary(dailyTasks) {
+    const total = dailyTasks.reduce(
+      (sum, t) => sum + (Number(t.duration) || 0),
+      0
     );
-  }
-}
 
-function resolveInitialTheme() {
-  try {
-    const stored = localStorage.getItem(THEME_STORAGE_KEY);
-    if (stored === 'dark' || stored === 'light') return stored;
-  } catch {
-    /* ignore */
-  }
+    if (totalHoursElement) {
+      totalHoursElement.textContent = total.toFixed(2);
+    }
 
-  const mq =
-    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-  return mq && mq.matches ? 'dark' : 'light';
-}
+    const target = dailyTargetHours > 0 ? dailyTargetHours : 8;
+    const pct = target > 0 ? Math.min(100, (total / target) * 100) : 0;
 
-// =========================
-// Init
-// =========================
+    if (dayProgressText) {
+      dayProgressText.textContent = `${Math.round(pct)}% of ${target}h`;
+    }
 
-(function init() {
-  // Load tasks + goal
-  tasks = loadTasksFromStorage();
-  loadDailyGoal();
+    if (dayProgressFill) {
+      dayProgressFill.style.width = `${pct}%`;
+    }
 
-  // Ensure selectedDate and inputs are in sync
-  selectedDate = getTodayString();
-  if (taskDateInput) taskDateInput.value = selectedDate;
-  if (calendarDatePicker) calendarDatePicker.value = selectedDate;
-
-  setSelectedDate(selectedDate); // updates labels + renders
-
-  // ---- Form submit ----
-  if (taskForm) {
-    taskForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-
-      const name = taskNameInput.value.trim();
-      const category = (taskCategoryInput.value || '').trim();
-      const duration = Number(taskDurationInput.value);
-      const dateRaw =
-        (taskDateInput && taskDateInput.value) || selectedDate || getTodayString();
-      const date = normalizeDateString(dateRaw) || getTodayString();
-
-      if (!name || !Number.isFinite(duration) || duration <= 0) return;
-
-      const newTask = {
-        id: generateTaskId(),
-        name,
-        category,
-        duration,
-        date,
-      };
-
-      tasks.push(newTask);
-      saveTasksToStorage();
-
-      // Jump view to that day so nav + totals match
-      setSelectedDate(date);
-      resetForm();
-    });
+    if (dayProgressBar) {
+      dayProgressBar.setAttribute('aria-valuemin', '0');
+      dayProgressBar.setAttribute('aria-valuemax', String(target));
+      dayProgressBar.setAttribute(
+        'aria-valuenow',
+        String(Math.min(total, target))
+      );
+    }
   }
 
-  // ---- Clear tasks for selected day ----
-  if (clearTasksButton) {
-    clearTasksButton.addEventListener('click', () => {
-      const dailyTasks = getTasksForSelectedDate();
-      if (!dailyTasks.length) return;
+  // =========================
+  // Calendar popover
+  // =========================
 
-      if (confirm('Clear all tasks for this day? (Tasks on other days will be kept.)')) {
-        tasks = tasks.filter((t) => t.date !== selectedDate);
-        saveTasksToStorage();
-        renderTasksForSelectedDate();
-      }
-    });
-  }
+  function toggleCalendarPopover() {
+    if (!calendarPopover || !calendarToggleButton) return;
+    const willShow = calendarPopover.hasAttribute('hidden');
 
-  // ---- Day navigation ----
-  if (prevDayButton) {
-    prevDayButton.addEventListener('click', () => shiftSelectedDate(-1));
-  }
-
-  if (nextDayButton) {
-    nextDayButton.addEventListener('click', () => shiftSelectedDate(1));
-  }
-
-  if (todayButton) {
-    todayButton.addEventListener('click', () => setSelectedDate(getTodayString()));
-  }
-
-  // ---- Calendar ----
-  if (calendarToggleButton) {
-    calendarToggleButton.addEventListener('click', toggleCalendarPopover);
-  }
-
-  if (calendarDatePicker && calendarPopover) {
-    calendarDatePicker.addEventListener('change', (event) => {
-      const chosen = normalizeDateString(event.target.value);
-      if (chosen) {
-        setSelectedDate(chosen);
-      }
+    if (willShow) {
+      calendarPopover.removeAttribute('hidden');
+      calendarToggleButton.setAttribute('aria-expanded', 'true');
+      if (calendarDatePicker) calendarDatePicker.focus();
+    } else {
       calendarPopover.setAttribute('hidden', '');
       calendarToggleButton.setAttribute('aria-expanded', 'false');
-    });
+    }
+  }
 
-    calendarPopover.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape') {
+  // =========================
+  // Theming
+  // =========================
+
+  function applyTheme(theme) {
+    const isDark = theme === 'dark';
+    if (isDark) {
+      rootElement.setAttribute('data-theme', 'dark');
+    } else {
+      rootElement.removeAttribute('data-theme');
+    }
+
+    if (themeToggle) {
+      themeToggle.textContent = isDark ? '☀️' : '🌙';
+      themeToggle.setAttribute('aria-pressed', String(isDark));
+      themeToggle.setAttribute(
+        'title',
+        isDark ? 'Switch to light mode' : 'Switch to dark mode'
+      );
+    }
+  }
+
+  function resolveInitialTheme() {
+    try {
+      const stored = localStorage.getItem(THEME_STORAGE_KEY);
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch {
+      /* ignore */
+    }
+
+    const mq =
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)');
+    return mq && mq.matches ? 'dark' : 'light';
+  }
+
+  // =========================
+  // Init
+  // =========================
+
+  function init() {
+    tasks = loadTasksFromStorage();
+    loadDailyGoal();
+
+    selectedDate = getTodayString();
+    if (taskDateInput) taskDateInput.value = selectedDate;
+    if (calendarDatePicker) calendarDatePicker.value = selectedDate;
+
+    setSelectedDate(selectedDate);
+
+    if (taskForm) {
+      taskForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        const name = taskNameInput.value.trim();
+        const category = (taskCategoryInput.value || '').trim();
+        const duration = Number(taskDurationInput.value);
+
+        const dateRaw =
+          (taskDateInput && taskDateInput.value) ||
+          selectedDate ||
+          getTodayString();
+        const date = normalizeDateString(dateRaw) || getTodayString();
+
+        if (!name || !Number.isFinite(duration) || duration <= 0) return;
+
+        const newTask = {
+          id: generateTaskId(),
+          name,
+          category,
+          duration,
+          date,
+        };
+
+        tasks.push(newTask);
+        saveTasksToStorage();
+
+        setSelectedDate(date);
+        resetForm();
+      });
+    }
+
+    if (clearTasksButton) {
+      clearTasksButton.addEventListener('click', () => {
+        const dailyTasks = getTasksForSelectedDate();
+        if (!dailyTasks.length) return;
+
+        if (
+          window.confirm(
+            'Clear all tasks for this day? (Tasks on other days will be kept.)'
+          )
+        ) {
+          tasks = tasks.filter((t) => t.date !== selectedDate);
+          saveTasksToStorage();
+          renderTasksForSelectedDate();
+        }
+      });
+    }
+
+    if (prevDayButton) {
+      prevDayButton.addEventListener('click', () => shiftSelectedDate(-1));
+    }
+
+    if (nextDayButton) {
+      nextDayButton.addEventListener('click', () => shiftSelectedDate(1));
+    }
+
+    if (todayButton) {
+      todayButton.addEventListener('click', () =>
+        setSelectedDate(getTodayString())
+      );
+    }
+
+    if (calendarToggleButton) {
+      calendarToggleButton.addEventListener('click', toggleCalendarPopover);
+    }
+
+    if (calendarDatePicker && calendarPopover) {
+      calendarDatePicker.addEventListener('change', (event) => {
+        const chosen = normalizeDateString(event.target.value);
+        if (chosen) setSelectedDate(chosen);
         calendarPopover.setAttribute('hidden', '');
         calendarToggleButton.setAttribute('aria-expanded', 'false');
-        calendarToggleButton.focus();
-      }
-    });
+      });
 
-    document.addEventListener('click', (event) => {
-      if (!calendarPopover || calendarPopover.hasAttribute('hidden')) return;
-      if (
-        event.target === calendarPopover ||
-        calendarPopover.contains(event.target) ||
-        event.target === calendarToggleButton
-      ) {
-        return;
-      }
-      calendarPopover.setAttribute('hidden', '');
-      calendarToggleButton.setAttribute('aria-expanded', 'false');
-    });
-  }
+      calendarPopover.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          calendarPopover.setAttribute('hidden', '');
+          calendarToggleButton.setAttribute('aria-expanded', 'false');
+          calendarToggleButton.focus();
+        }
+      });
 
-  // ---- Daily goal events ----
-  if (dailyGoalInput) {
-    dailyGoalInput.addEventListener('change', saveDailyGoal);
-    dailyGoalInput.addEventListener('blur', saveDailyGoal);
-  }
-
-  // ---- Theme init ----
-  const initialTheme = resolveInitialTheme();
-  applyTheme(initialTheme);
-
-  if (themeToggle) {
-    themeToggle.addEventListener('click', () => {
-      const isDark = rootElement.getAttribute('data-theme') === 'dark';
-      const next = isDark ? 'light' : 'dark';
-      applyTheme(next);
-      try {
-        localStorage.setItem(THEME_STORAGE_KEY, next);
-      } catch {
-        /* ignore */
-      }
-    });
-  }
-
-  const prefersDark =
-    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
-  if (prefersDark) {
-    const handlePreferenceChange = (event) => {
-      try {
-        const stored = localStorage.getItem(THEME_STORAGE_KEY);
-        if (stored === 'dark' || stored === 'light') return;
-      } catch {
-        /* ignore */
-      }
-      applyTheme(event.matches ? 'dark' : 'light');
-    };
-
-    if (typeof prefersDark.addEventListener === 'function') {
-      prefersDark.addEventListener('change', handlePreferenceChange);
-    } else if (typeof prefersDark.addListener === 'function') {
-      prefersDark.addListener(handlePreferenceChange);
+      document.addEventListener('click', (event) => {
+        if (!calendarPopover || calendarPopover.hasAttribute('hidden')) return;
+        if (
+          event.target === calendarPopover ||
+          calendarPopover.contains(event.target) ||
+          event.target === calendarToggleButton
+        ) {
+          return;
+        }
+        calendarPopover.setAttribute('hidden', '');
+        calendarToggleButton.setAttribute('aria-expanded', 'false');
+      });
     }
+
+    if (dailyGoalInput) {
+      dailyGoalInput.addEventListener('change', saveDailyGoal);
+      dailyGoalInput.addEventListener('blur', saveDailyGoal);
+    }
+
+    const initialTheme = resolveInitialTheme();
+    applyTheme(initialTheme);
+
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const isDark = rootElement.getAttribute('data-theme') === 'dark';
+        const next = isDark ? 'light' : 'dark';
+        applyTheme(next);
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, next);
+        } catch {
+          /* ignore */
+        }
+      });
+    }
+
+    const prefersDark =
+      window.matchMedia &&
+      window.matchMedia('(prefers-color-scheme: dark)');
+    if (prefersDark) {
+      const handlePreferenceChange = (event) => {
+        try {
+          const stored = localStorage.getItem(THEME_STORAGE_KEY);
+          if (stored === 'dark' || stored === 'light') return;
+        } catch {
+          /* ignore */
+        }
+        applyTheme(event.matches ? 'dark' : 'light');
+      };
+
+      if (typeof prefersDark.addEventListener === 'function') {
+        prefersDark.addEventListener('change', handlePreferenceChange);
+      } else if (typeof prefersDark.addListener === 'function') {
+        prefersDark.addListener(handlePreferenceChange);
+      }
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
   }
 })();
