@@ -30,6 +30,10 @@ const calendarDatePicker = document.querySelector('#calendar-date-picker');
 const themeToggle = document.querySelector('#themeToggle');
 const rootElement = document.documentElement;
 
+// Totals card labels (for dynamic "Today" vs selected date)
+const totalsTitle = document.querySelector('#totals .section-header h2');
+const hoursLabelElement = document.querySelector('#totals .hours-label');
+
 // ------ storage keys ------
 const STORAGE_KEY = 'smartschedule:tasks';
 const LEGACY_STORAGE_KEY = 'smartschedule-tasks';
@@ -86,7 +90,6 @@ function sanitizeTask(raw) {
   if (!raw || typeof raw !== 'object') return null;
 
   const id = typeof raw.id === 'string' ? raw.id : generateTaskId();
-
   const name = typeof raw.name === 'string' ? raw.name.trim() : '';
   if (!name) return null;
 
@@ -140,6 +143,27 @@ function getTasksForSelectedDate() {
   return tasks.filter((t) => t.date === selectedDate);
 }
 
+function updateTotalsLabels() {
+  if (!totalsTitle || !hoursLabelElement) return;
+
+  const today = getTodayString();
+
+  if (selectedDate === today) {
+    totalsTitle.textContent = 'Today';
+    hoursLabelElement.textContent = 'hours today';
+  } else {
+    totalsTitle.textContent = formatDateLabel(selectedDate);
+
+    const d = new Date(selectedDate + 'T00:00:00');
+    const short = d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+    });
+
+    hoursLabelElement.textContent = `hours on ${short}`;
+  }
+}
+
 function setSelectedDate(dateString) {
   const normalized = normalizeDateString(dateString) || getTodayString();
   selectedDate = normalized;
@@ -154,6 +178,7 @@ function setSelectedDate(dateString) {
     calendarDatePicker.value = selectedDate;
   }
 
+  updateTotalsLabels();
   renderTasksForSelectedDate();
 }
 
@@ -264,10 +289,7 @@ function updateDailySummary(dailyTasks) {
   if (dayProgressBar) {
     dayProgressBar.setAttribute('aria-valuemin', '0');
     dayProgressBar.setAttribute('aria-valuemax', String(DAILY_TARGET_HOURS));
-    dayProgressBar.setAttribute(
-      'aria-valuenow',
-      String(Math.min(total, DAILY_TARGET_HOURS))
-    );
+    dayProgressBar.setAttribute('aria-valuenow', String(Math.min(total, DAILY_TARGET_HOURS)));
   }
 }
 
@@ -290,7 +312,7 @@ function toggleCalendarPopover() {
 }
 
 // =========================
-// Theming (unchanged behavior)
+// Theming
 // =========================
 
 function applyTheme(theme) {
@@ -329,10 +351,10 @@ function resolveInitialTheme() {
 // =========================
 
 (function init() {
-  // Load tasks from storage
+  // Load tasks
   tasks = loadTasksFromStorage();
 
-  // Ensure selectedDate + form dates are in sync
+  // Ensure selectedDate and inputs are in sync
   if (!selectedDate) selectedDate = getTodayString();
   if (taskDateInput && !taskDateInput.value) {
     taskDateInput.value = selectedDate;
@@ -341,7 +363,7 @@ function resolveInitialTheme() {
     calendarDatePicker.value = selectedDate;
   }
 
-  setSelectedDate(selectedDate);
+  setSelectedDate(selectedDate); // also calls updateTotalsLabels
 
   // ---- Form submit ----
   if (taskForm) {
@@ -368,13 +390,13 @@ function resolveInitialTheme() {
       tasks.push(newTask);
       saveTasksToStorage();
 
-      // Jump to that day (so user sees what they just added)
+      // Jump view to that day so the card + list match
       setSelectedDate(date);
       resetForm();
     });
   }
 
-  // ---- Clear tasks (for selected day only) ----
+  // ---- Clear tasks for selected day ----
   if (clearTasksButton) {
     clearTasksButton.addEventListener('click', () => {
       const dailyTasks = getTasksForSelectedDate();
@@ -424,7 +446,6 @@ function resolveInitialTheme() {
       }
     });
 
-    // click outside to close
     document.addEventListener('click', (event) => {
       if (!calendarPopover || calendarPopover.hasAttribute('hidden')) return;
       if (
@@ -456,7 +477,6 @@ function resolveInitialTheme() {
     });
   }
 
-  // React to system changes only if no manual choice
   const prefersDark =
     window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)');
   if (prefersDark) {
@@ -473,7 +493,7 @@ function resolveInitialTheme() {
     if (typeof prefersDark.addEventListener === 'function') {
       prefersDark.addEventListener('change', handlePreferenceChange);
     } else if (typeof prefersDark.addListener === 'function') {
-      prefersDark.addListener(handlePreferenceChange); // Safari legacy
+      prefersDark.addListener(handlePreferenceChange);
     }
   }
 })();
